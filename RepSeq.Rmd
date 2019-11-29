@@ -44,14 +44,14 @@ Get help for RepSeq
 Basically, **RepSeq** can load data in the format is tab-delimited text file as one of the output from MiXCR, rTCR or ClonotypeR.
 ```{r, echo = TRUE, include = TRUE}
 # list files from a folder 
-l <- list.files(system.file("extdata/mixcr", package = "RepSeq"), full.names = TRUE)
+l <- list.files(file.path(getwd(), "extdata/mixcr"), full.names = TRUE)
 l
 ```
 
 Sample data is necessary for further analyses.
 ```{r, echo = TRUE, include = TRUE}
 # load sample meta-data (could be added later)
-sampleData <- read.table(system.file("extdata", "sampledata.txt", package="RepSeq"), sep = "\t", header = TRUE, row.names=2)
+sampleData <- read.table(file.path(getwd(), "extdata", "sampledata.txt"), sep = "\t", header = TRUE, row.names=2)
 sampleData
 ```
 

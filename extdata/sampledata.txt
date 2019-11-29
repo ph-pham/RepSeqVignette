@@ -1,0 +1,13 @@
+project	samp	quantity	chain	replicate
+iRepertoire	ACTCAT	100	TRB	3
+iRepertoire	AGACAC	10	TRB	1
+iRepertoire	AGATGA	100	TRB	2
+iRepertoire	ATGATA	10	TRB	2
+iRepertoire	CGCTCT	100	TRB	1
+iRepertoire	CGTGAT	10	TRB	3
+Clontech	PBA036_S1_L001_R1_001	10	TRB	1
+Clontech	PBA037_S2_L001_R1_001	10	TRB	2
+Clontech	PBA038_S3_L001_R1_001	10	TRB	3
+Clontech	PBA039_S4_L001_R1_001	100	TRB	1
+Clontech	PBA040_S5_L001_R1_001	100	TRB	2
+Clontech	PBA041_S6_L001_R1_001	100	TRB	3

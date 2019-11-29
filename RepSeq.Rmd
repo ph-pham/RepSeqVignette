@@ -1,5 +1,5 @@
 ---
-title: "RepSeq data analysis"
+title: "RepSeq data analysis Salut"
 author: "H. P. Pham"
 date: "`r Sys.Date()`"
 output: 
@@ -257,9 +257,10 @@ When varying $\alpha$ we obtained a Renyi's profile. We computed the Renyi's pro
 
 ```{r, echo = TRUE}
 # Computed normalization
-data.norm <- normalizeCounts(datatab, method="iChao")
-data.norm
-data.norm.indices <- basicIndices(data.norm, level="VpJ")
+
+#data.norm <- normalizeCounts(datatab, method="iChao")
+#data.norm
+#data.norm.indices <- basicIndices(data.norm, level="VpJ")
 ```
 
 ## Diversity computation
@@ -277,15 +278,15 @@ sData(datatab) <- data.frame(sData(datatab), indices)
 Hierarchical classification tree shows sample regrouping 
 ```{r, echo = TRUE, include = TRUE, fig.height=6}
 # compute pairwise distance between samples based on Shannon index
-d1 <- dist(indices$shannon, method="euclidean")
-d2 <- dist(data.norm.indices$shannon, method="euclidean")
+# d1 <- dist(indices$shannon, method="euclidean")
+# d2 <- dist(data.norm.indices$shannon, method="euclidean")
 # make hierarchical classification
-hc1 <- hclust(d1, method="ward.D")
-hc2 <- hclust(d2, method="ward.D")
+# hc1 <- hclust(d1, method="ward.D")
+# hc2 <- hclust(d2, method="ward.D")
 # tree representation
-par(mfrow=c(1,2))
-plot(hc1, labels=paste(sData(datatab)$project, sData(datatab)$quantity, sep="_"))
-plot(hc2, labels=paste(sData(data.norm)$project, sData(data.norm)$quantity, sep="_"))
+# par(mfrow=c(1,2))
+# plot(hc1, labels=paste(sData(datatab)$project, sData(datatab)$quantity, sep="_"))
+# plot(hc2, labels=paste(sData(data.norm)$project, sData(data.norm)$quantity, sep="_"))
 ```
 
 # Multivariate score
@@ -315,7 +316,8 @@ Distance correlation is a new metric to measure the dependence between two paire
 
 # Differential analysis
 ## Between sample normalization
-For a decade, sequencing technology has played a fundamental role biology and became cheaper to produce. Raw count derived from TCR high throughput sequencing represents only relative abundance of the feature in sample and not absolute abundances of features. RepSeq data contain large fraction of zeroes in the count data, and the relativelylow sequencing depths of samples posed a severe problem: transcriptome RNA-Seq methods fail to provide a robust normalization for all samples.
+For a decade, sequencing technology has played a fundamental role biology and became cheaper to produce. Raw count derived from TCR high throughput sequencing represents only relative abundance of the feature in sample and not absolute abundances of features. RepSeq data contain large fraction of zeroes in the count data, and the relatively
+low sequencing depths of samples posed a severe problem: transcriptome RNA-Seq methods fail to provide a robust normalization for all samples.
 
 ### Notation
   * $i$ is the indice of the $i^{th}$ feature, $i \in \{1,..,N\}$.

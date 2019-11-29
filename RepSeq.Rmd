@@ -1,0 +1,336 @@
+---
+title: "RepSeq data analysis"
+author: "H. P. Pham"
+date: "`r Sys.Date()`"
+output: 
+    BiocStyle::html_document:
+        toc_float: true
+vignette: >
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteIndexEntry{RepSeq package}
+  %\VignetteEncoding{UTF-8}{inputenc}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+**RepSeq** is a sequencing package for quantifying T-cell repertoire diversity. As for transcriptome study, the first step is to align reads to a reference repertoire genome. Several softwares were designed to align and annotate raw sequence (fastq) with respect to a reference repertoire. **RepSeq** package allows to read clonotype tables (output files) of rTCR (Bowtie2), MiXCR (owner aligner) and ClonotypeR (BWA). This guide provides an overview of the R package **RepSeq** for handling and analyzing aligned sequences data.
+
+# Getting started
+
+The latest developement version of this package could be installed from github (https://github.com/ph-pham/RepSeq) using the package `devtools`: 
+```{r, echo = TRUE, eval = FALSE}
+install.packages(devtools)  # if necessary
+devtools::install_github("ph-pham/RepSeq")
+```
+
+Load the package into memory
+```{r, echo = TRUE}
+library(RepSeq)
+```
+
+Get help for RepSeq
+```{r, echo = TRUE, eval = FALSE}
+?RepSeq
+```
+
+# Input data
+Basically, **RepSeq** can load data in the format is tab-delimited text file as one of the output from MiXCR, rTCR or ClonotypeR.
+```{r, echo = TRUE, include = TRUE}
+# list files from a folder 
+l <- list.files(system.file("extdata/mixcr", package = "RepSeq"), full.names = TRUE)
+l
+```
+
+Sample data is necessary for further analyses.
+```{r, echo = TRUE, include = TRUE}
+# load sample meta-data (could be added later)
+sampleData <- read.table(system.file("extdata", "sampledata.txt", package="RepSeq"), sep = "\t", header = TRUE, row.names=2)
+sampleData
+```
+
+The function `readClonotypeSet` is a wrapper function that allows to load all files from a folder and to create an object of class RepSeqExperiment, a S4 class. All the tab-delimited files must come from the same aligner otherwise, user will get an error. Tab-delimited files could be "gzipped" for saving space on disk. Sample meta data, a `data frame`, could be specified directly or later.
+
+```{r readclonotypes, echo = TRUE}
+# read data files
+datatab <- RepSeq::readClonotypeSet(l, cores = 2L, aligner = "MiXCR", chain = "B", sampleinfo = sampleData, keep.ambiguous = FALSE, keep.unproductive = FALSE, aa.th = 8)
+```
+
+The options of `readClonotypeSet`:
+
+* **fileList**: a vector contains full path to each file to be imported.
+
+* **cores**: a number, the function can use multiple cores to speed up the importation process.
+
+* **aligner**: a character contains the name of software used to align reads ("rTCR", "ClonotypeR" or "MiXCR").
+
+* **chain**: an character indicates which TCR chain alpha or betha to import, Use A for alpha chain and B for beta chain. Default is A.
+
+* **sampleinfo**: a data frame containing sample information for each clonotype file in fileList. The number of rows of sampleinfo must be identical to the number of file in fileList. A data frame containing If NULL
+
+* **keep.ambiguous**: a boolean choice if ambiguous clonotypes (contain STOP codon) should be kept in analysis. Default is FALSE.
+
+* **keep.unproductive**: a boolean choice if unproductive clonotypes (Euclidean dividion of aa length by 3 > 0) should be kept in analysis. Default is FALSE.
+
+* **aa.th**: an interger indicates the maximal number of amino acids could be deviated from the mean length. Default is 8.
+
+The `readClonotypeSet` function calls either `parseMiXCR`, `parseRTCR` or `parseClonotypeR` for loading and formatting clonotype tables in order to filter `filterClonotypes` according to the specific options. Each function could be used indepedently. 
+
+Summmarized information of an `RepSeqExperiment` object.
+```{r, echo = TRUE}
+datatab
+```
+
+Raw aligned data files can be huge and take time to import, `RepSeqExperiment` object could be save to disk under the `rds` format using the function `saveRDS` for futur use.
+```{r saveRDS, echo = TRUE, eval = FALSE}
+saveRDS(datatab, file="RepSeqExp.rds")
+```
+
+# The RepSeqExperiment class
+`RepSeqExperiment` is a S4 class used by `RepSeq` package to link clonotype table and all meta data related to samples or experiment. Clonotype tables are `data.table` and organized in the long-format for convenient. 
+
+```{r datatab, echo = TRUE, eval=FALSE}
+# load the .rds file if necessary 
+datatab <- readRDS(file=file.path(output, "RepSeqExp.rds"))
+datatab
+```
+
+## Methods
+An object of class RepSeqExperiment contains 4 slots:
+
+1. **assay**, a data.table that contains clonotype tables.
+
+2. **sampleData**, a data frame which samples in rows ad parameters in columns.
+
+3. **metaData**, a list
+
+4. **History**, a data frame.
+
+Slot **assay** is accessible using the method `assay()`. The slot assay is a **data.table** (ref) of 9 columns `r paste(colnames(assay(datatab)), collapse=", ")`. 
+```{r assay, echo = TRUE}
+assay(datatab)
+```
+
+The slot **sampleDate** is a data frame containing sample information. This slot is accessible using the method `sData()` and could be updated using `sData()<-`.
+```{r sampleData, echo = TRUE}
+sData(datatab)
+```
+
+The function `readClonotypeSet` adds information about the number of sequences, clonotypes, V-gene, J-gene, V-J combinations and CDR3aa sequences to the sample meta data.
+
+The slot **metaData** is a *list* that user can add all other information. The method `mData()` is use to retrieve and update the slot **metaData**. 
+```{r metaData, echo = TRUE}
+mData(datatab)
+```
+
+The slot **History** is a data frame registering actions taken on the object. 
+```{r History, echo = TRUE}
+History(datatab)
+```
+
+## Constructor
+User can create an `RepSeqExperiment` object directly from clonotype tables using the function `RepSeqExp`. Clonotype table must have the following column names:
+
+- **lib**: name of sample
+
+- **V**: V-gene name
+
+- **J**: J-gene name
+
+- **CDR3aa**: CDR3 amino acid sequence
+
+- **CD3dna**: CDR3 nucleotide sequence
+
+- **VpJ**: Clonotype identifier, a combination of V-gene, CDR3 aa sequence and J-gene
+
+- **VJ**: V-J combination
+
+- **score**: alignment score
+
+- **count**: clonotype abundance
+
+If the name of the variable that contains clonotype tables is `clonotypetable`, the function 
+
+```{r, echo = TRUE, eval = FALSE}
+datatab <- RepSeqExp(assayData=clonotypetable, sampleData=NULL) 
+```
+
+## Setter & getter
+
+
+
+# Basic functions
+
+Thu function `countFeatures()` allows user to count features in each sample and produces a table of clonotypes $\times$ samples
+```{r, echo = TRUE}
+cts <- countFeatures(datatab, level="VpJ")
+cts
+```
+
+# Diversity analysis
+## Diversity indices
+
+### Notation
+The below notation is described for one repertoire.
+* $i$ is the indice of the $i^{th}$ feature, $i \in \{1,..,N\}$.
+* $n$: total abundance.
+* $p_{i}$: proportion of the feature $i$. 
+* $s_{j}$: total counts of the sample $j$, $s_j=\sum_{i=1}^N c_{ij}$
+* $S_j$: observed number of clonotypes within the sample $j$, $S_j = \sum_{i=1}^N \mathbb{1}_{\{c_{ij}>0\}}$
+  
+### Species richness
+
+Species richness is the number of clonotypes within a repertoire having $p_i > 0$.
+
+### Chao1(ref)
+
+Chao1 is a non-parametric approach
+
+\[
+\hat{S}_{Chao1} = \left\{
+    \begin{array}{ll}
+        S_{obs} + \frac {f_1^2}{2 f_2} & \mbox{if } f_2 > 0 \\
+        S_{obs} + \frac{f_1(f_1-1)}{2} & \mbox{if } f_2 =0
+    \end{array}
+\right.
+\]
+
+### Improved Chao1 (ref)
+$n$ = total abundance of features within a sample.
+\[
+\hat{S}_{iChao1} = \hat{S}_{Chao1} + \frac{n-3}{n}\frac{f_3}{4f_4} \times max\left(f_1 - \frac{n-3}{n-1}\frac{f_2f_3}{2f_4} , 0 \right)
+\]
+
+### Chao1 under sampling without replacement
+$n$ = total abundance of features within a sample, $q=\frac{n}{S_j}$.
+
+\[
+\hat{S}_{Chao1.wor} = S_{obs} + \frac{f_1^2}{\frac{n}{n-1}2f_2 + \frac{q}{1-q}f_1}
+\]
+
+### Shannon (ref)
+
+Shannon's diversity index quantifies the entropy of a repertoire
+Given n clonotypes and $p=\{p_1, p_2, ..., p_n\}$ a vector of proportion of clonotypes within a repertoire, the Shannon's index ($H_S$) is defined as:
+\[
+H_S = \sum_{i=1}^n p_i\ln p_i
+\]
+with $\ln$, natural logarithm function (neperien)
+
+### D50
+
+D50 measures the number of clonotypes which represent 50% of the overall repertoire.
+
+### Eveness
+
+Species evenness quantifies how close in number each clonotype in a repertoire, The evenness of a repertoire is  represented by the Pielou's index:
+\[
+J = \frac{H_S}{H_{max}}
+\]
+with $H_{max}=log(n)$ and $H_S$ the Shannon's index
+
+### Gini index
+
+### Simpson index
+
+### Inverse Simpson index
+
+### Renyi profiles (ref)
+
+Renyi's entropy is a generalization of Shannon's entropy:
+\[
+^{\alpha}H = \frac{1}{1-\alpha}\ln \left(\sum_{i=1}^{n}p_i^\alpha \right)
+\]
+
+when $\alpha=0$, we have the species evenness $J$, 
+when $\alpha=1$, Renyi index is equal to Shannon's index.
+
+When varying $\alpha$ we obtained a Renyi's profile. We computed the Renyi's profiles for $\alpha \in [0, ..., Inf ]$.
+
+## Count normalization
+
+```{r, echo = TRUE}
+# Computed normalization
+data.norm <- normalizeCounts(datatab, method="iChao")
+data.norm
+data.norm.indices <- basicIndices(data.norm, level="VpJ")
+```
+
+## Diversity computation
+The function `basicIndices` computes all the diversity indices presented above for each sample. User can choose the level at which the diversity indices will be computed. 
+```{r, echo = TRUE}
+indices <- basicIndices(datatab, level="VpJ")
+indices
+```
+
+These indices can be added to sample meta data for further use:
+```{r, echo = TRUE}
+sData(datatab) <- data.frame(sData(datatab), indices) 
+```
+
+Hierarchical classification tree shows sample regrouping 
+```{r, echo = TRUE, include = TRUE, fig.height=6}
+# compute pairwise distance between samples based on Shannon index
+d1 <- dist(indices$shannon, method="euclidean")
+d2 <- dist(data.norm.indices$shannon, method="euclidean")
+# make hierarchical classification
+hc1 <- hclust(d1, method="ward.D")
+hc2 <- hclust(d2, method="ward.D")
+# tree representation
+par(mfrow=c(1,2))
+plot(hc1, labels=paste(sData(datatab)$project, sData(datatab)$quantity, sep="_"))
+plot(hc2, labels=paste(sData(data.norm)$project, sData(data.norm)$quantity, sep="_"))
+```
+
+# Multivariate score
+Multilvariate score is an extension of the $U$-statistics (Mann-Whitney's, Wilcoxon's statistic) which combine multiple outcome (multiple parameters) to compute a score for each observation. For repertoire analysis, we often would like to know which clonotypes (V, J, V-J) expressed highly across all samples. Several methods for combining multiple parameter have been proposed (O'Brien 1984, Wittkowski 2004).
+
+
+# Repertoires similarity
+Notations:  
+$N$ number of species (clonotype, V gene, J gene, V-J combinations).  
+$n_{ij}$ frequency of the feature $i$ (rows) within the sample $j$ (columns). 
+
+## Bray Curtis
+Bray-Curtis distance between sample $j$ and $k$ is defined by the following formula: 
+\[
+BC(j, k) = \frac{\sum_{i=1}^N |n_{ij}-n_{ik}|}{\sum_{i=1}^N (n_{ik}-n_{ik})}
+\]
+
+## Morisita-Horn
+Distance 
+\[
+d(j,k) = 1 - \frac{2\sum_{i=}^N n_{ij}n_{ik}}{(\lambda_j+\lambda_k) \sum_{i=1}^N n_{ij} \sum_{i=1}^N n_{ik}} 
+\]
+where $\lambda_j = \frac{\sum_{i=1}^N (n_{ij}(n_{ij}-1))}{\sum_{i=1}^N (n_{ij})\sum_{i=1}^N (n_{ij}-1)}$
+
+## Distance correlation
+Distance correlation is a new metric to measure the dependence between two paired random vectors proposed by Szekely & Rizzo (2005). The distance correlation coefficient equals to zero if and only if the random vectors are independent.
+
+# Differential analysis
+## Between sample normalization
+For a decade, sequencing technology has played a fundamental role biology and became cheaper to produce. Raw count derived from TCR high throughput sequencing represents only relative abundance of the feature in sample and not absolute abundances of features. RepSeq data contain large fraction of zeroes in the count data, and the relativelylow sequencing depths of samples posed a severe problem: transcriptome RNA-Seq methods fail to provide a robust normalization for all samples.
+
+### Notation
+  * $i$ is the indice of the $i^{th}$ feature, $i \in \{1,..,N\}$.
+  * $j$ is the indice of the $j^{th}$ sample, $j \in \{1,..,M\}$.
+  * $c_{ij}$: count of feature $i$ in the sample $j$.
+  * $s_{j}$: total counts of the sample $j$, $s_j=\sum_{i=1}^N c_{ij}$
+  * $S_j$: observed number of clonotypes within the sample $j$, $S_j = \sum_{i=1}^N \mathbb{1}_{\{c_{ij}>0\}}$
+  * $\tilde{s}_j$: normalized total counts.
+
+### Various Chao1 diversity indices
+Chao1 index tries to figure out how many species are actually present based on the sampling effort and the observed diversity.
+
+
+
+Also a quote using `>`:
+
+> "He who gives up [code] safety for [code] speed deserves neither."
+([via](https://twitter.com/hadleywickham/status/504368538874703872))

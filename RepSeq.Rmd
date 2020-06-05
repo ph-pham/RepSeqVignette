@@ -1,10 +1,10 @@
 ---
-title: "RepSeq data analysis--"
+title: "RepSeq data analysis"
 author:
-- name: PHP
-  affiliation: ILTOO Pharma, Paris, France
-- name: VMH
-  affiliation: I3 Laboratory, Paris, France
+- name: Hang-Phuong Pham
+  affiliation: ILTOO Pharma, Statistics Department, Paris, France.
+- name: Vanessa Mhanna
+  affiliation: Sorbonne Université, INSERM, Immunology-Immunopathology-Immunotherapy (i3), F-75005 Paris, France
 output:
   BiocStyle::html_document:
     toc_float: true
@@ -31,12 +31,12 @@ options(width = 85)
 
 # Introduction
 
-**RepSeq** is an R package designed to describe and to compare immune 
-repertoires. It performs unpaired TRA and TRB chain analysis. This guide 
-provides an overview of the features within this package. 
+**RepSeq** is an R package designed to analyze T cell receptor (TCR) and 
+immunoglobulin (Ig) immune repertoires. This guide provides an overview of 
+the features within this package. 
 
 # Getting started
-
+## Installation
 The latest developement version of this package could be installed from github 
 (https://github.com/ph-pham/RepSeq) using the package `devtools`: 
 ```{r github1, echo = TRUE, eval = FALSE}
@@ -63,23 +63,29 @@ Get help for RepSeq
 ?RepSeq
 ```
 
-# Input data
+## Input data
 **RepSeq** can load aligned data (output files) of rTCR (Bowtie2), MiXCR 
-(owner aligner) and ClonotypeR (BWA) in a tab-delimited text format. All 
-tab-delimited files must be generated with the same aligner otherwise. 
-Tab-delimited files could be "gzipped" to save space on disk. 
+(owner aligner) and ClonotypeR (BWA) in a tab-delimited text format. 
+"gzipped" aligned files can be used.
 
-The following list of files came from Barennes et al. (ref). It consists in 
-processed TRA & TRB chains sequencing data by MiXCR. This project aims to 
-compare several tools for next-generation sequencing suitable for studying the 
-immune repertoires in 3 different concentrations. A subset of 12 samples was 
-selected to illustrate the use of this package.
+A subset of twelve samples were selected from a published study by 
+Barennes et al. (ref) to illustrate the use of this package.
+They consist of unpaired TRA and TRB sequences processed using MiXCR.
 
 ```{r listfiles, echo = TRUE, include = F}
 # list files from a folder 
 l <- list.files(file.path(getwd(), "extdata/mixcr"), full.names = TRUE)
 l
 ```
+Terminology:
+
+- VpJ: a clonotype, i.e an unique amino acid V-CDR3-J sequence
+
+- Clonotype table: all information related to clonotype. 
+
+- Features: V gene, J gene, V-J combination, clonotype, CDR3aa sequence, 
+CDR3dna sequence.
+
 
 Adding information on the samples is necessary for downstream analyses.
 This could include group names, experimental conditions, etc. 
@@ -111,12 +117,7 @@ sampleData$Group <- factor(paste(sampleData$project, sampleData$quantity,
 
 Some definitions: 
 
-- Clonotype: combination of V, CDR3aa and J.
 
-- Clonotype table: all information related to clonotype. 
-
-- Feature: any of V, J, V-J combination, clonotype, CDR3aa sequence, 
-CDR3dna sequence.
 
 ## Constructors
 `RepSeqExp`: User can create a `RepSeqExperiment` object directly from 
